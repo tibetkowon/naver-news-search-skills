@@ -3,11 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/kowon/naver-news-search-skills/internal/dotenv"
 	"github.com/kowon/naver-news-search-skills/internal/exa"
 	"github.com/kowon/naver-news-search-skills/internal/naver"
+	"github.com/kowon/naver-news-search-skills/internal/notion"
 )
 
 func main() {
@@ -25,6 +27,8 @@ func main() {
 		runSearch(os.Args[2:])
 	case "fetch":
 		runFetch(os.Args[2:])
+	case "notion":
+		runNotion(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", os.Args[1])
 		printUsage()
@@ -36,6 +40,7 @@ func printUsage() {
 	fmt.Println("Usage:")
 	fmt.Println("  naver-news search --query <검색어> [--display <1-100>] [--sort <sim|date>] [--fetch] [--highlights] [--highlight-query <검색어>] [--highlight-chars <N>]")
 	fmt.Println("  naver-news fetch  --url <URL>")
+	fmt.Println("  naver-news notion --parent-id <페이지ID> --title <제목>   (stdin으로 Markdown 입력)")
 }
 
 func runSearch(args []string) {
@@ -132,4 +137,39 @@ func runFetch(args []string) {
 	fmt.Println("---")
 	fmt.Println()
 	fmt.Println(content)
+}
+
+func runNotion(args []string) {
+	fs := flag.NewFlagSet("notion", flag.ExitOnError)
+	parentID := fs.String("parent-id", "", "부모 페이지 ID (필수)")
+	title := fs.String("title", "", "새 페이지 제목 (필수)")
+	fs.Parse(args)
+
+	if *parentID == "" {
+		fmt.Fprintln(os.Stderr, "Error: --parent-id is required")
+		os.Exit(1)
+	}
+	if *title == "" {
+		fmt.Fprintln(os.Stderr, "Error: --title is required")
+		os.Exit(1)
+	}
+
+	content, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading stdin: %v\n", err)
+		os.Exit(1)
+	}
+	if len(content) == 0 {
+		fmt.Fprintln(os.Stderr, "Error: stdin is empty — pipe search output into this command")
+		os.Exit(1)
+	}
+
+	blocks := notion.ParseMarkdownToBlocks(string(content))
+	pageURL, err := notion.CreatePage(*parentID, *title, blocks)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("노션 페이지 생성 완료: %s\n", pageURL)
 }

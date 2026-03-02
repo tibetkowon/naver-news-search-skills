@@ -19,6 +19,7 @@ go build -o naver-news .
 | `NAVER_CLIENT_ID` | 네이버 API 클라이언트 ID | [네이버 개발자 센터](https://developers.naver.com) |
 | `NAVER_CLIENT_SECRET` | 네이버 API 클라이언트 Secret | [네이버 개발자 센터](https://developers.naver.com) |
 | `EXA_API_KEY` | Exa AI API 키 | [Exa AI](https://exa.ai) |
+| `NOTION_API_KEY` | Notion Integration 토큰 | [Notion Developers](https://www.notion.so/my-integrations) |
 
 ## 사용법
 
@@ -59,6 +60,33 @@ NAVER_CLIENT_ID=<id> NAVER_CLIENT_SECRET=<secret> EXA_API_KEY=<key> \
 ```bash
 NAVER_CLIENT_ID=<id> NAVER_CLIENT_SECRET=<secret> EXA_API_KEY=<key> \
   ./naver-news search --query "AI 반도체" --display 3 --fetch
+```
+
+### 카테고리별 뉴스 → Notion 페이지 자동 생성
+
+여러 카테고리의 검색 결과를 파이프로 연결해 하나의 Notion 페이지로 정리합니다.
+
+```bash
+{
+  NAVER_CLIENT_ID=<id> NAVER_CLIENT_SECRET=<secret> EXA_API_KEY=<key> \
+    ./naver-news search --query "인공지능" --display 5 --highlights
+  NAVER_CLIENT_ID=<id> NAVER_CLIENT_SECRET=<secret> EXA_API_KEY=<key> \
+    ./naver-news search --query "경제 주식" --display 5 --highlights
+  NAVER_CLIENT_ID=<id> NAVER_CLIENT_SECRET=<secret> EXA_API_KEY=<key> \
+    ./naver-news search --query "정치" --display 5 --highlights
+} | NOTION_API_KEY=<token> ./naver-news notion \
+    --parent-id <페이지ID> \
+    --title "2026년 3월 2일 뉴스 브리핑"
+```
+
+| 플래그 | 기본값 | 설명 |
+|--------|--------|------|
+| `--parent-id` | (필수) | 부모 페이지 ID (Notion URL의 마지막 32자리 hex) |
+| `--title` | (필수) | 새 페이지 제목 |
+
+성공 시 출력:
+```
+노션 페이지 생성 완료: https://notion.so/...
 ```
 
 ## 출력 형식
@@ -114,8 +142,10 @@ naver-news-search-skills/
 ├── internal/
 │   ├── naver/
 │   │   └── client.go       # 네이버 뉴스 API 클라이언트
-│   └── exa/
-│       └── client.go       # Exa Contents API 클라이언트
+│   ├── exa/
+│   │   └── client.go       # Exa Contents API 클라이언트
+│   └── notion/
+│       └── client.go       # Notion API 클라이언트 + Markdown 파서
 ├── .claude/
 │   └── skills/             # Claude 워크플로우 스킬
 └── docs/
