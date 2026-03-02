@@ -10,7 +10,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 )
 
 const (
@@ -323,16 +322,6 @@ func notionRequest(apiKey, method, url string, body any) ([]byte, error) {
 
 // ---- Page creation ----
 
-func buildCallout() Block {
-	date := time.Now().Format("2006-01-02")
-	b := newBlock("callout")
-	b.Callout = &CalloutBlock{
-		RichText: plainRichText("naver-news CLI로 자동 생성 · " + date),
-		Icon:     Icon{Type: "emoji", Emoji: "💡"},
-	}
-	return b
-}
-
 type pageParent struct {
 	Type   string `json:"type"`
 	PageID string `json:"page_id"`
@@ -361,8 +350,7 @@ func CreatePage(parentPageID, title string, blocks []Block) (string, error) {
 		return "", fmt.Errorf("NOTION_API_KEY environment variable is required")
 	}
 
-	// Prepend callout block
-	allBlocks := append([]Block{buildCallout()}, blocks...)
+	allBlocks := blocks
 
 	const batchSize = 100
 	firstBatch := allBlocks

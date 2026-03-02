@@ -286,21 +286,22 @@ OpenAI가 GPT-5를 공개했다.
 
 에이전트가 기사 전문을 읽고 직접 요약한 뒤, 그 요약만 노션에 올립니다.
 
-```bash
-# 1. 카테고리별로 기사 전문 가져오기
-search_result=$(
-  NAVER_CLIENT_ID=xxx NAVER_CLIENT_SECRET=yyy EXA_API_KEY=zzz \
-    ./naver-news search --query "인공지능" --display 3 --fetch
-  NAVER_CLIENT_ID=xxx NAVER_CLIENT_SECRET=yyy EXA_API_KEY=zzz \
-    ./naver-news search --query "경제 주식" --display 3 --fetch
-)
+**에이전트가 수행할 단계:**
 
-# 2. 에이전트가 $search_result를 읽고 요약 Markdown 작성
-# 3. 에이전트가 요약 Markdown을 notion으로 파이프
-echo "$agent_summary" | NOTION_API_KEY=nnn ./naver-news notion \
-    --parent-id <page_id> \
-    --title "2026년 3월 2일 뉴스 브리핑"
+1. `search --fetch`로 각 카테고리의 기사 전문을 가져옵니다.
+2. 가져온 기사 전문을 읽고, 위 "패턴 C" 형식에 맞춰 요약 Markdown을 직접 작성합니다.
+3. 작성한 요약 Markdown을 `notion` 커맨드에 stdin으로 전달합니다.
+
+```bash
+# 1단계: 기사 전문 가져오기 (카테고리별로 실행)
+./naver-news search --query "인공지능" --display 3 --fetch
+./naver-news search --query "경제 주식" --display 3 --fetch
+
+# 3단계: 에이전트가 작성한 요약 Markdown을 notion으로 전달
+./naver-news notion --parent-id <page_id> --title "2026년 3월 2일 뉴스 브리핑"
 ```
+
+> 2단계(요약 작성)는 에이전트 LLM이 직접 수행합니다. `notion` 커맨드에 전달되는 내용은 에이전트가 작성한 요약이어야 하며, `search` 출력을 그대로 파이프하지 않습니다.
 
 > 기사 수가 많으면 토큰 사용량이 늘어납니다. 카테고리당 `--display 3~5`가 적당합니다.
 
