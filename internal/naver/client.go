@@ -3,6 +3,7 @@ package naver
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	"net/url"
 	"os"
@@ -68,8 +69,8 @@ func Search(query string, display int, sort string) ([]NewsItem, error) {
 	}
 
 	for i := range result.Items {
-		result.Items[i].Title = stripBoldTags(result.Items[i].Title)
-		result.Items[i].Description = stripBoldTags(result.Items[i].Description)
+		result.Items[i].Title = html.UnescapeString(stripBoldTags(result.Items[i].Title))
+		result.Items[i].Description = html.UnescapeString(stripBoldTags(result.Items[i].Description))
 	}
 
 	return result.Items, nil

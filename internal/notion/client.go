@@ -182,9 +182,10 @@ func ParseMarkdownToBlocks(markdown string) []Block {
 	for _, raw := range lines {
 		line := strings.TrimRight(raw, " \t")
 
-		// blank line
+		// blank line: skip entirely — do NOT flush here.
+		// Titles are buffered until actual content arrives, so that the URL
+		// lines that follow ## headings are captured before heading_2 is emitted.
 		if line == "" {
-			flushPending()
 			continue
 		}
 
@@ -204,10 +205,11 @@ func ParseMarkdownToBlocks(markdown string) []Block {
 			continue
 		}
 
-		// ## N. title → buffer
+		// ## N. title → buffer; reset URL so previous article's URL doesn't carry over
 		if m := h2Re.FindStringSubmatch(line); m != nil {
 			flushPending()
 			pendingTitle = m[1]
+			pendingURL = ""
 			continue
 		}
 
@@ -230,7 +232,7 @@ func ParseMarkdownToBlocks(markdown string) []Block {
 			continue
 		}
 
-		// Any other non-empty line: flush pending title first
+		// Any other non-empty, non-metadata line: flush pending title first
 		flushPending()
 
 		// divider
