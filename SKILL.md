@@ -1,8 +1,9 @@
 ---
 name: naver-news-search
 description: 네이버 뉴스 검색 API와 Exa로 뉴스를 검색하고 기사 본문을 가져오는 도구
-version: 1.1.0
+version: 1.2.0
 binary: ./naver-news
+build: go build -o naver-news .
 env:
   - NAVER_CLIENT_ID
   - NAVER_CLIENT_SECRET
@@ -17,6 +18,11 @@ capabilities:
 # naver-news-search 스킬
 
 한국어 뉴스를 검색하고 기사 본문을 가져오는 CLI 도구입니다. 네이버 뉴스 검색 API로 뉴스 목록을 검색하고, Exa Contents API로 기사 원문을 가져옵니다.
+
+> **사용 전 빌드 필요**: 처음 사용하거나 소스가 업데이트된 경우 반드시 빌드합니다.
+> ```bash
+> go build -o naver-news .
+> ```
 
 ## 필수 환경 변수
 
