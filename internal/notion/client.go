@@ -138,10 +138,14 @@ func newBlock(blockType string) Block {
 // ---- Markdown patterns ----
 
 var (
-	// # 네이버 뉴스 검색 결과: "query"
-	h1Re = regexp.MustCompile(`^# 네이버 뉴스 검색 결과: "(.+)"$`)
-	// ## N. 제목
-	h2Re = regexp.MustCompile(`^## \d+\. (.+)$`)
+	// # 네이버 뉴스 검색 결과: "query"  (search 커맨드 출력)
+	h1SearchRe = regexp.MustCompile(`^# 네이버 뉴스 검색 결과: "(.+)"$`)
+	// # 일반 제목  (에이전트가 직접 쓴 heading)
+	h1Re = regexp.MustCompile(`^# (.+)$`)
+	// ## [제목](url)  (에이전트가 링크 포함해서 쓴 heading)
+	h2LinkRe = regexp.MustCompile(`^## \[(.+?)\]\((.+?)\)$`)
+	// ## N. 제목  or  ## 제목  (search 출력 또는 에이전트가 쓴 heading)
+	h2Re = regexp.MustCompile(`^## (?:\d+\. )?(.+)$`)
 	// - **원문 링크**: URL
 	originalLinkRe = regexp.MustCompile(`^- \*\*원문 링크\*\*: (.+)$`)
 	// - **네이버 링크**: URL
@@ -194,8 +198,8 @@ func ParseMarkdownToBlocks(markdown string) []Block {
 			continue
 		}
 
-		// # heading_1 (category)
-		if m := h1Re.FindStringSubmatch(line); m != nil {
+		// # 네이버 뉴스 검색 결과: "query" → heading_1 with category emoji mapping
+		if m := h1SearchRe.FindStringSubmatch(line); m != nil {
 			flushPending()
 			keyword := m[1]
 			emoji := categoryEmoji(keyword)
@@ -205,7 +209,24 @@ func ParseMarkdownToBlocks(markdown string) []Block {
 			continue
 		}
 
-		// ## N. title → buffer; reset URL so previous article's URL doesn't carry over
+		// # 일반 heading → heading_1 as-is (에이전트가 직접 쓴 경우, 이모지 포함)
+		if m := h1Re.FindStringSubmatch(line); m != nil {
+			flushPending()
+			b := newBlock("heading_1")
+			b.Heading1 = &TextBlock{RichText: plainRichText(m[1])}
+			blocks = append(blocks, b)
+			continue
+		}
+
+		// ## [제목](url) → heading_2 with link (에이전트가 링크 포함해서 쓴 경우)
+		if m := h2LinkRe.FindStringSubmatch(line); m != nil {
+			flushPending()
+			pendingTitle = m[1]
+			pendingURL = m[2]
+			continue
+		}
+
+		// ## N. 제목  or  ## 제목 → buffer title; reset URL
 		if m := h2Re.FindStringSubmatch(line); m != nil {
 			flushPending()
 			pendingTitle = m[1]
