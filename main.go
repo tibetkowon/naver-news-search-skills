@@ -5,11 +5,16 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/kowon/naver-news-search-skills/internal/dotenv"
 	"github.com/kowon/naver-news-search-skills/internal/exa"
 	"github.com/kowon/naver-news-search-skills/internal/naver"
 )
 
 func main() {
+	if err := dotenv.Load(".env"); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: could not read .env: %v\n", err)
+	}
+
 	if len(os.Args) < 2 {
 		printUsage()
 		os.Exit(1)
