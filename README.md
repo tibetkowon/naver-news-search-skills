@@ -60,10 +60,10 @@ go build -o naver-news .
 
 ### `notion` — Notion 페이지 생성
 
-stdin으로 Markdown을 받아 지정한 부모 페이지 하위에 새 페이지를 생성합니다.
+stdin으로 Markdown을 받아 지정한 부모 페이지 하위에 새 페이지를 생성합니다. 에이전트가 작성한 요약 Markdown을 stdin으로 전달합니다.
 
 ```bash
-echo "$summary_markdown" | ./naver-news notion \
+./naver-news notion \
   --parent-id <페이지ID> \
   --title "2026년 3월 2일 뉴스 브리핑"
 ```
@@ -89,7 +89,7 @@ echo "$summary_markdown" | ./naver-news notion \
 | `---` | `divider` |
 | 그 외 | `paragraph` (`**bold**` 인라인 지원) |
 
-`search` 출력을 그대로 파이프하면 카테고리 이모지 자동 매핑, 기사 URL 하이퍼링크 적용 등 추가 처리가 됩니다.
+에이전트가 요약한 Markdown을 stdin으로 전달하는 방식을 권장합니다. `search` 출력을 그대로 파이프하는 것도 가능하며, 그 경우 카테고리 이모지 자동 매핑과 기사 URL 하이퍼링크가 적용됩니다.
 
 ## 에이전트 워크플로우
 
