@@ -38,7 +38,7 @@ naver-news-search-skills/
 |--------|------|-----------|
 | `NAVER_CLIENT_ID` | 네이버 개발자 센터에서 발급받은 클라이언트 ID | search 커맨드 필수 |
 | `NAVER_CLIENT_SECRET` | 네이버 개발자 센터에서 발급받은 클라이언트 Secret | search 커맨드 필수 |
-| `EXA_API_KEY` | Exa AI에서 발급받은 API 키 | fetch 커맨드 필수 |
+| `EXA_API_KEY` | Exa AI에서 발급받은 API 키 | fetch, search --fetch, search --highlights 필수 |
 
 ## 빌드 및 실행
 
@@ -55,8 +55,14 @@ NAVER_CLIENT_ID=xxx NAVER_CLIENT_SECRET=yyy ./naver-news search --query "AI" --d
 # 기사 본문 가져오기
 EXA_API_KEY=zzz ./naver-news fetch --url "https://n.news.naver.com/..."
 
-# 통합 (검색 + 본문 자동 가져오기)
+# 통합 (검색 + 전체 본문 가져오기)
 NAVER_CLIENT_ID=xxx NAVER_CLIENT_SECRET=yyy EXA_API_KEY=zzz ./naver-news search --query "AI" --display 3 --fetch
+
+# 검색 + 핵심 문장 (highlights 브라우징)
+NAVER_CLIENT_ID=xxx NAVER_CLIENT_SECRET=yyy EXA_API_KEY=zzz ./naver-news search --query "AI 반도체" --display 5 --highlights
+
+# highlights + 추출 방향 지정
+NAVER_CLIENT_ID=xxx NAVER_CLIENT_SECRET=yyy EXA_API_KEY=zzz ./naver-news search --query "테슬라" --display 3 --highlights --highlight-query "주가 투자 영향"
 ```
 
 ## CLI 커맨드
@@ -69,7 +75,10 @@ NAVER_CLIENT_ID=xxx NAVER_CLIENT_SECRET=yyy EXA_API_KEY=zzz ./naver-news search 
 | `--query` | (필수) | 검색어 |
 | `--display` | 10 | 결과 개수 (1-100) |
 | `--sort` | sim | 정렬: `sim`(정확도순), `date`(날짜순) |
-| `--fetch` | false | 각 기사 본문을 Exa로 함께 가져오기 |
+| `--fetch` | false | 각 기사 전체 본문을 Exa로 함께 가져오기 |
+| `--highlights` | false | 각 기사 핵심 문장 3~5개를 Exa highlights로 가져오기 |
+| `--highlight-query` | "" | highlights 추출 방향 지정 |
+| `--highlight-chars` | 500 | URL당 최대 문자 수 |
 
 ### `fetch`
 Exa Contents API로 특정 URL의 기사 본문을 가져옵니다.

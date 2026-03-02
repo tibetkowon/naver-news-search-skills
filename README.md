@@ -34,7 +34,12 @@ NAVER_CLIENT_ID=<id> NAVER_CLIENT_SECRET=<secret> \
 | `--query` | (필수) | 검색어 |
 | `--display` | 10 | 결과 개수 (1-100) |
 | `--sort` | sim | `sim` 정확도순 / `date` 날짜순 |
-| `--fetch` | false | 각 기사 본문을 Exa로 함께 가져오기 |
+| `--fetch` | false | 각 기사 전체 본문을 Exa로 함께 가져오기 |
+| `--highlights` | false | 각 기사 핵심 문장 3~5개를 Exa highlights로 가져오기 |
+| `--highlight-query` | "" | highlights 추출 방향 지정 (빈 문자열이면 자동) |
+| `--highlight-chars` | 500 | URL당 최대 문자 수 |
+
+> `--fetch`와 `--highlights`는 동시에 사용하지 않습니다. `--highlights`는 빠른 브라우징용, `--fetch`는 전체 본문이 필요할 때 사용합니다.
 
 ### 기사 본문 가져오기
 
@@ -42,7 +47,14 @@ NAVER_CLIENT_ID=<id> NAVER_CLIENT_SECRET=<secret> \
 EXA_API_KEY=<key> ./naver-news fetch --url "https://n.news.naver.com/..."
 ```
 
-### 검색 + 본문 통합
+### 검색 + 핵심 문장 (highlights)
+
+```bash
+NAVER_CLIENT_ID=<id> NAVER_CLIENT_SECRET=<secret> EXA_API_KEY=<key> \
+  ./naver-news search --query "AI 반도체" --display 5 --highlights
+```
+
+### 검색 + 전체 본문
 
 ```bash
 NAVER_CLIENT_ID=<id> NAVER_CLIENT_SECRET=<secret> EXA_API_KEY=<key> \
@@ -52,6 +64,8 @@ NAVER_CLIENT_ID=<id> NAVER_CLIENT_SECRET=<secret> EXA_API_KEY=<key> \
 ## 출력 형식
 
 모든 출력은 Markdown 형식이며, 에이전트가 직접 읽고 처리할 수 있습니다.
+
+**기본 검색:**
 
 ```markdown
 # 네이버 뉴스 검색 결과: "인공지능"
@@ -65,6 +79,25 @@ NAVER_CLIENT_ID=<id> NAVER_CLIENT_SECRET=<secret> EXA_API_KEY=<key> \
 - **네이버 링크**: https://n.news.naver.com/article/123
 
 삼성전자가 새로운 AI 반도체 제품을 출시했다...
+
+---
+```
+
+**`--highlights` 사용 시:**
+
+```markdown
+## 1. 삼성전자, AI 반도체 신제품 출시
+
+- **날짜**: Mon, 02 Mar 2026 09:00:00 +0900
+- **원문 링크**: https://www.example.com/article/123
+- **네이버 링크**: https://n.news.naver.com/article/123
+
+삼성전자가 새로운 AI 반도체 제품을 출시했다...
+
+**핵심 내용:**
+1. 삼성전자가 새로운 AI 반도체 제품을 출시했다.
+2. 이 제품은 전작 대비 성능이 40% 향상됐다.
+3. 하반기 글로벌 출시를 목표로 하고 있다.
 
 ---
 ```

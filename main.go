@@ -34,7 +34,7 @@ func main() {
 
 func printUsage() {
 	fmt.Println("Usage:")
-	fmt.Println("  naver-news search --query <검색어> [--display <1-100>] [--sort <sim|date>] [--fetch]")
+	fmt.Println("  naver-news search --query <검색어> [--display <1-100>] [--sort <sim|date>] [--fetch] [--highlights] [--highlight-query <검색어>] [--highlight-chars <N>]")
 	fmt.Println("  naver-news fetch  --url <URL>")
 }
 
@@ -44,6 +44,9 @@ func runSearch(args []string) {
 	display := fs.Int("display", 10, "결과 개수 (1-100, 기본 10)")
 	sort := fs.String("sort", "sim", "정렬: sim(정확도순), date(날짜순)")
 	fetchContent := fs.Bool("fetch", false, "각 기사 본문을 Exa로 함께 가져오기")
+	highlights := fs.Bool("highlights", false, "각 기사 핵심 문장을 Exa highlights로 가져오기")
+	highlightQuery := fs.String("highlight-query", "", "highlights 추출 방향 지정 (빈 문자열이면 자동)")
+	highlightChars := fs.Int("highlight-chars", 500, "URL당 최대 문자 수")
 	fs.Parse(args)
 
 	if *query == "" {
@@ -75,11 +78,25 @@ func runSearch(args []string) {
 		fmt.Printf("- **네이버 링크**: %s\n", item.Link)
 		fmt.Printf("\n%s\n\n", item.Description)
 
-		if *fetchContent {
-			targetURL := item.OriginalLink
-			if targetURL == "" {
-				targetURL = item.Link
+		targetURL := item.OriginalLink
+		if targetURL == "" {
+			targetURL = item.Link
+		}
+
+		if *highlights {
+			fmt.Printf("**핵심 내용:**\n")
+			snippets, err := exa.FetchHighlights(targetURL, *highlightQuery, *highlightChars)
+			if err != nil {
+				fmt.Printf("_핵심 내용을 가져오지 못했습니다: %v_\n\n", err)
+			} else if len(snippets) == 0 {
+				fmt.Printf("_핵심 내용 없음_\n\n")
+			} else {
+				for j, s := range snippets {
+					fmt.Printf("%d. %s\n", j+1, s)
+				}
+				fmt.Println()
 			}
+		} else if *fetchContent {
 			fmt.Printf("### 기사 본문\n\n")
 			content, err := exa.FetchContent(targetURL)
 			if err != nil {
