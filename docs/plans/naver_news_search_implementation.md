@@ -1,94 +1,57 @@
-# Plan: Naver News Search Skills 구현
+# naver-news 구현 계획
 
-**작성일:** 2026-03-02
-**상태:** 완료 (Completed)
+## 목표
 
----
+한국어 뉴스를 검색하고 에이전트가 요약 후보를 고를 수 있도록 제목, 설명, 날짜, 원문 링크, 네이버 뉴스 링크를 제공하는 CLI 도구를 만든다.
 
-## Goal
+기사 본문 추출은 봇 차단과 언론사별 HTML 구조 차이 때문에 CLI 범위 밖으로 둔다.
 
-OpenClaw 에이전트가 한국어 뉴스를 검색하고 요약할 수 있도록, 네이버 뉴스 검색 API와 Exa Content API를 활용하는 Go CLI 도구를 만들고, 이를 위한 SKILL.md 매니페스트를 작성한다.
+## 구성
 
-## Requirements
-
-- Go 표준 라이브러리만 사용 (외부 의존성 없음)
-- 에이전트가 Markdown 출력을 직접 파싱할 수 있어야 함
-- 네이버 API: GET `/v1/search/news.json` (검색어, 개수, 정렬 지원)
-- Exa API: POST `/contents` (URL로 본문 텍스트 추출)
-- `<b>` 태그 등 HTML 마크업 제거 후 출력
-- 환경 변수로 인증 정보 관리 (하드코딩 금지)
-
-## Affected Files
-
-| 파일 | 작업 |
+| 파일 | 역할 |
 |------|------|
-| `CLAUDE.md` | 신규 작성 |
-| `SKILL.md` | 신규 작성 |
-| `README.md` | 업데이트 |
-| `main.go` | 신규 작성 |
-| `go.mod` | 신규 작성 |
-| `internal/naver/client.go` | 신규 작성 |
-| `internal/exa/client.go` | 신규 작성 |
-| `.gitignore` | 신규 작성 |
+| `main.go` | CLI 서브커맨드, 출력 포맷 처리 |
+| `internal/naver/client.go` | 네이버 뉴스 검색 API 클라이언트 |
+| `internal/google/client.go` | Google News RSS 클라이언트 |
+| `internal/notion/client.go` | 검색 결과/Markdown을 Notion 블록으로 변환 및 저장 |
+| `internal/dotenv/dotenv.go` | `.env` 로딩 |
+| `README.md`, `AGENT.md`, `SKILL.md` | 사용자 및 에이전트용 문서 |
 
-## Architecture
-
-```
-OpenClaw 에이전트
-   └── SKILL.md 읽기
-       └── naver-news CLI 호출
-           ├── search --query "..." → 네이버 뉴스 API → 뉴스 목록(Markdown)
-           └── fetch --url "..."   → Exa Contents API → 기사 본문(Markdown)
-```
-
-**역할 분리:**
-- **Go CLI**: 데이터 수집 (API 호출, 포맷 변환)
-- **OpenClaw LLM**: 최종 요약 및 분석
-
-## Implementation Phases
-
-### Phase 1: 프로젝트 설정
-- [x] CLAUDE.md 작성 (프로젝트 개요, 환경 변수, 빌드 방법)
-- [x] go.mod 초기화 (`github.com/kowon/naver-news-search-skills`)
-
-### Phase 2: API 클라이언트
-- [x] `internal/naver/client.go` — 네이버 뉴스 검색 API 클라이언트
-  - `NewsItem` 구조체
-  - `Search(query, display, sort)` 함수
-  - `<b>` 태그 제거 (정규식)
-- [x] `internal/exa/client.go` — Exa Contents API 클라이언트
-  - `FetchContent(url)` 함수
-  - POST `/contents` with `{"ids": [url], "text": true}`
-
-### Phase 3: CLI 진입점
-- [x] `main.go` — 서브커맨드 구조
-  - `search` 서브커맨드 (`--query`, `--display`, `--sort`, `--fetch`)
-  - `fetch` 서브커맨드 (`--url`)
-  - Markdown 형식 출력
-
-### Phase 4: 문서화
-- [x] SKILL.md 작성 (YAML 프론트매터 + 사용법 + 한국어 예시)
-- [x] README.md 업데이트
-- [x] docs/plans/ 계획 문서 (이 파일)
-- [x] docs/reviews/ 코드 해설 문서
-
-## Verification
+## 커맨드
 
 ```bash
-# 빌드 확인
-go build -o naver-news .
-
-# 사용법 출력
-./naver-news
-
-# 필수 플래그 검증
-./naver-news search          # Error: --query is required
-./naver-news fetch           # Error: --url is required
-
-# 실제 API 테스트 (환경 변수 필요)
-NAVER_CLIENT_ID=xxx NAVER_CLIENT_SECRET=yyy \
-  ./naver-news search --query "인공지능" --display 5
-
-EXA_API_KEY=zzz \
-  ./naver-news fetch --url "https://n.news.naver.com/..."
+./naver-news search --query "인공지능" --display 5
+./naver-news search --query "AI" --sort date --display 10
+./naver-news search --query "인공지능" --source google
+./naver-news search --query "AI" --format markdown
+./naver-news search --query "AI" | ./naver-news notion --parent-id <ID> --title "뉴스 브리핑"
 ```
+
+## 출력
+
+기본 출력은 JSON이다.
+
+```json
+{
+  "query": "인공지능",
+  "source": "naver",
+  "items": [
+    {
+      "title": "기사 제목",
+      "description": "검색 결과 설명",
+      "url": "https://원문URL",
+      "naver_url": "https://n.news.naver.com/...",
+      "pub_date": "Mon, 02 Jun 2025 09:00:00 +0900"
+    }
+  ]
+}
+```
+
+## 완료 항목
+
+- [x] Naver 검색
+- [x] Google News RSS 검색
+- [x] JSON/Markdown 출력
+- [x] Notion 새 페이지 생성
+- [x] 기존 Notion 페이지 append
+- [x] 본문 추출 기능을 범위 밖으로 제거

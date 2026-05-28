@@ -18,7 +18,6 @@ type NewsItem struct {
 	URL         string `json:"url"`
 	NaverURL    string `json:"naver_url"`
 	PubDate     string `json:"pub_date"`
-	Content     string `json:"content,omitempty"`
 }
 
 // apiItem matches the raw Naver API response field names.

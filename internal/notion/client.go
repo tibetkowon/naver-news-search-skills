@@ -432,7 +432,7 @@ type searchJSONItem struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	URL         string `json:"url"`
-	Content     string `json:"content"`
+	NaverURL    string `json:"naver_url"`
 }
 
 // ParseSearchJSONToBlocks converts the JSON output of the search command into
@@ -458,21 +458,21 @@ func ParseSearchJSONToBlocks(data []byte) ([]Block, error) {
 	for _, item := range s.Items {
 		// heading_2: title linked to URL
 		h2 := newBlock("heading_2")
-		if item.URL != "" {
-			h2.Heading2 = &TextBlock{RichText: linkedRichText(item.Title, item.URL)}
+		linkURL := item.URL
+		if linkURL == "" {
+			linkURL = item.NaverURL
+		}
+		if linkURL != "" {
+			h2.Heading2 = &TextBlock{RichText: linkedRichText(item.Title, linkURL)}
 		} else {
 			h2.Heading2 = &TextBlock{RichText: plainRichText(item.Title)}
 		}
 		blocks = append(blocks, h2)
 
-		// paragraph: content if available, otherwise description
-		body := item.Content
-		if body == "" {
-			body = item.Description
-		}
-		if body != "" {
+		// paragraph: search-result snippet
+		if item.Description != "" {
 			p := newBlock("paragraph")
-			p.Paragraph = &TextBlock{RichText: parseRichText(body)}
+			p.Paragraph = &TextBlock{RichText: parseRichText(item.Description)}
 			blocks = append(blocks, p)
 		}
 

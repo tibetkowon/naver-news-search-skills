@@ -1,11 +1,10 @@
 # naver-news
 
-한국어 뉴스를 검색하고 기사 본문을 수집하는 Go CLI 도구입니다. 어떤 에이전트(Hermes, Claude Code, OpenClaw 등)에서도 사용할 수 있습니다.
+한국어 뉴스를 검색하고 원문 링크를 수집하는 Go CLI 도구입니다. 어떤 에이전트(Hermes, Claude Code, OpenClaw 등)에서도 사용할 수 있습니다.
 
-- **네이버 뉴스 API** — 한국어 뉴스 검색 (일 25,000회 무료)
-- **Google News RSS** — API 키 없이 검색 가능한 보조 소스
-- **Exa Contents API** — 기사 전문 추출
-- **Notion API** — 검색 결과 페이지 저장
+- **네이버 뉴스 API**: 원문 URL과 네이버 뉴스 URL을 함께 제공하는 기본 검색 소스
+- **Google News RSS**: API 키 없이 사용할 수 있는 보조 검색 소스
+- **Notion API**: 검색 결과를 Notion 페이지로 저장
 
 ## 설치
 
@@ -25,7 +24,6 @@ go build -o naver-news .
 |--------|------|-----------|
 | `NAVER_CLIENT_ID` | 네이버 API 클라이언트 ID | `--source naver` (기본) |
 | `NAVER_CLIENT_SECRET` | 네이버 API 클라이언트 Secret | `--source naver` (기본) |
-| `EXA_API_KEY` | Exa AI API 키 | `fetch`, `search --fetch` |
 | `NOTION_API_KEY` | Notion Integration 토큰 | `notion` 커맨드 |
 
 ## 커맨드
@@ -37,7 +35,6 @@ go build -o naver-news .
 ./naver-news search --query "AI" --sort date --display 10
 ./naver-news search --query "AI" --display 10 --start 11        # 페이지네이션
 ./naver-news search --query "인공지능" --source google           # API 키 불필요
-./naver-news search --query "테슬라" --display 3 --fetch         # 전문 포함
 ./naver-news search --query "AI" --format markdown              # Markdown 출력
 ```
 
@@ -48,7 +45,6 @@ go build -o naver-news .
 | `--sort` | sim | `sim` 정확도순 / `date` 날짜순 — naver 전용 |
 | `--start` | 1 | 시작 위치 (페이지네이션) — naver 전용 |
 | `--source` | naver | `naver` \| `google` |
-| `--fetch` | false | 각 기사 전문을 Exa로 가져오기 |
 | `--format` | json | `json` \| `markdown` |
 
 **JSON 출력 (기본):**
@@ -68,17 +64,7 @@ go build -o naver-news .
 }
 ```
 
-### `fetch` — 기사 본문 가져오기
-
-```bash
-./naver-news fetch --url "https://n.news.naver.com/..."
-./naver-news fetch --url "https://url1" --url "https://url2"    # 다중 URL
-```
-
-| 플래그 | 기본값 | 설명 |
-|--------|--------|------|
-| `--url` | (필수, 반복 가능) | 기사 URL |
-| `--format` | json | `json` \| `markdown` |
+Naver는 개별 기사 원문 URL(`url`)과 네이버 뉴스 URL(`naver_url`)을 함께 제공합니다. Google News RSS의 `url`은 Google News 링크일 수 있어 원문 직접 링크로 보장하지 않습니다.
 
 ### `notion` — Notion 페이지 저장
 
@@ -96,15 +82,7 @@ stdin(JSON 또는 Markdown)을 Notion 페이지로 저장합니다.
 
 ## 에이전트 사용법
 
-에이전트 통합 가이드는 **AGENT.md**를 참고하세요.
-
-```bash
-# 기본 워크플로우: 검색 → 전문 수집 → Notion 저장
-{
-  ./naver-news search --query "인공지능" --display 3 --fetch
-  ./naver-news search --query "경제 주식" --display 3 --fetch
-} | ./naver-news notion --parent-id <ID> --title "2026-06-01 뉴스 브리핑"
-```
+에이전트 통합 가이드는 **AGENT.md**를 참고하세요. 이 CLI는 기사 본문 추출을 시도하지 않습니다. 봇 차단과 언론사별 HTML 차이를 피하기 위해 검색 결과의 제목, 설명, 날짜, 링크를 안정적으로 제공하는 데 집중합니다.
 
 ## 라이선스
 

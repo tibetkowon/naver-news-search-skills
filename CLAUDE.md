@@ -1,15 +1,15 @@
 # naver-news-search-skills
 
-한국어 뉴스를 검색하고 요약할 수 있도록, 네이버 뉴스 검색 API와 Exa Content API를 활용하는 Go CLI 도구 프로젝트입니다.
+한국어 뉴스를 검색하고 요약 후보를 수집할 수 있도록, 네이버 뉴스 검색 API와 Google News RSS를 활용하는 Go CLI 도구 프로젝트입니다.
 
 ## 프로젝트 개요
 
-에이전트는 이 프로젝트의 `naver-news` CLI를 호출하여 뉴스를 검색하고 기사 본문을 가져옵니다. 최종 요약은 에이전트 자신의 LLM 능력으로 생성합니다.
+에이전트는 이 프로젝트의 `naver-news` CLI를 호출하여 뉴스 검색 결과와 링크를 가져옵니다. 기사 본문 추출은 봇 차단과 언론사별 HTML 차이를 피하기 위해 CLI 범위 밖으로 둡니다.
 
 ## 기술 스택
 
 - **언어**: Go (표준 라이브러리만 사용: `net/http`, `encoding/json`, `encoding/xml`, `flag`, `regexp`)
-- **외부 API**: 네이버 뉴스 검색 API, Google News RSS, Exa Contents API, Notion API
+- **외부 API**: 네이버 뉴스 검색 API, Google News RSS, Notion API
 
 ## 디렉토리 구조
 
@@ -26,8 +26,6 @@ naver-news-search-skills/
 │   │   └── client.go       ← 네이버 뉴스 API 클라이언트
 │   ├── google/
 │   │   └── client.go       ← Google News RSS 클라이언트
-│   ├── exa/
-│   │   └── client.go       ← Exa Contents API 클라이언트
 │   └── notion/
 │       └── client.go       ← Notion API 클라이언트 + 파서
 ├── .claude/
@@ -42,7 +40,6 @@ naver-news-search-skills/
 |--------|------|-----------|
 | `NAVER_CLIENT_ID` | 네이버 개발자 센터 클라이언트 ID | `--source naver` 필수 |
 | `NAVER_CLIENT_SECRET` | 네이버 개발자 센터 클라이언트 Secret | `--source naver` 필수 |
-| `EXA_API_KEY` | Exa AI API 키 | `fetch`, `search --fetch` 필수 |
 | `NOTION_API_KEY` | Notion Integration 토큰 | `notion` 커맨드 필수 |
 
 ## 빌드 및 실행
@@ -63,18 +60,9 @@ NAVER_CLIENT_ID=xxx NAVER_CLIENT_SECRET=yyy ./naver-news search --query "AI" --d
 # 페이지네이션
 NAVER_CLIENT_ID=xxx NAVER_CLIENT_SECRET=yyy ./naver-news search --query "AI" --display 10 --start 11
 
-# 기사 본문 가져오기
-EXA_API_KEY=zzz ./naver-news fetch --url "https://n.news.naver.com/..."
-
-# 다중 URL fetch
-EXA_API_KEY=zzz ./naver-news fetch --url "https://url1" --url "https://url2"
-
-# 검색 + 전체 본문 가져오기
-NAVER_CLIENT_ID=xxx NAVER_CLIENT_SECRET=yyy EXA_API_KEY=zzz ./naver-news search --query "AI" --display 3 --fetch
-
 # 검색 결과를 Notion 페이지로 저장
 NAVER_CLIENT_ID=xxx NAVER_CLIENT_SECRET=yyy ./naver-news search --query "인공지능" --display 5 \
-  | NOTION_API_KEY=nnn ./naver-news notion --parent-id <page_id> --title "2026년 3월 2일 뉴스 브리핑"
+  | NOTION_API_KEY=nnn ./naver-news notion --parent-id <page_id> --title "뉴스 브리핑"
 
 # 기존 Notion 페이지에 추가
 ./naver-news search --query "경제" --display 5 \
@@ -93,15 +81,6 @@ NAVER_CLIENT_ID=xxx NAVER_CLIENT_SECRET=yyy ./naver-news search --query "인공�
 | `--sort` | sim | `sim`(정확도순), `date`(날짜순) — naver 전용 |
 | `--start` | 1 | 시작 위치 (1-based) — naver 전용 |
 | `--source` | naver | `naver` \| `google` |
-| `--fetch` | false | 각 기사 전문을 Exa로 함께 가져오기 |
-| `--format` | json | `json` \| `markdown` |
-
-### `fetch`
-Exa Contents API로 기사 본문을 가져옵니다. `--url`을 여러 번 사용해 다중 URL 처리 가능.
-
-| 플래그 | 기본값 | 설명 |
-|--------|--------|------|
-| `--url` | (필수, 반복 가능) | 기사 URL |
 | `--format` | json | `json` \| `markdown` |
 
 ### `notion`

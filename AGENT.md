@@ -1,6 +1,6 @@
 # naver-news — 에이전트 가이드
 
-한국어 뉴스를 검색하고 기사 본문을 가져오는 CLI 도구입니다. 에이전트가 직접 `naver-news` 바이너리를 호출하고, 수집한 내용을 LLM 능력으로 요약합니다.
+한국어 뉴스를 검색하고 기사 후보의 제목, 설명, 날짜, 링크를 가져오는 CLI 도구입니다. 에이전트는 `naver-news`가 제공하는 검색 결과를 바탕으로 브리핑하거나, 필요한 경우 링크를 별도 도구로 열람합니다.
 
 ## 빌드
 
@@ -16,7 +16,6 @@ Go 1.22 이상 필요. 외부 패키지 없음.
 |--------|-----------|--------|
 | `NAVER_CLIENT_ID` | `--source naver` (기본) | 네이버 개발자 센터 |
 | `NAVER_CLIENT_SECRET` | `--source naver` (기본) | 네이버 개발자 센터 |
-| `EXA_API_KEY` | `fetch`, `search --fetch` | exa.ai |
 | `NOTION_API_KEY` | `notion` 커맨드 | Notion Integrations |
 
 `.env` 파일에 작성하면 자동으로 읽습니다.
@@ -38,7 +37,6 @@ Go 1.22 이상 필요. 외부 패키지 없음.
 | `--sort` | sim | `sim` 정확도순 / `date` 날짜순 — naver 전용 |
 | `--start` | 1 | 시작 위치 (1-based, 페이지네이션) — naver 전용 |
 | `--source` | naver | `naver` \| `google` |
-| `--fetch` | false | 각 기사 전문을 Exa로 가져오기 |
 | `--format` | json | `json` \| `markdown` |
 
 **JSON 출력 구조:**
@@ -52,28 +50,13 @@ Go 1.22 이상 필요. 외부 패키지 없음.
       "description": "삼성전자가...",
       "url": "https://www.example.com/article/1",
       "naver_url": "https://n.news.naver.com/article/001/123",
-      "pub_date": "Mon, 02 Jun 2025 09:00:00 +0900",
-      "content": "기사 전문... (--fetch 시에만 포함)"
+      "pub_date": "Mon, 02 Jun 2025 09:00:00 +0900"
     }
   ]
 }
 ```
 
-### `fetch` — 기사 본문 가져오기
-
-```bash
-./naver-news fetch --url <URL> [--url <URL> ...] [--format json|markdown]
-```
-
-단일 URL:
-```json
-{"url": "https://...", "content": "기사 전문..."}
-```
-
-복수 URL:
-```json
-{"results": [{"url": "https://...", "content": "..."}, ...]}
-```
+Naver는 원문 URL과 네이버 뉴스 URL을 함께 제공합니다. Google News RSS의 URL은 Google News 링크일 수 있으므로 원문 직접 링크가 필요하면 Naver 소스를 우선 사용합니다.
 
 ### `notion` — Notion 페이지 저장
 
@@ -103,38 +86,23 @@ API 키가 없거나 가볍게 훑어볼 때.
 ./naver-news search --query "인공지능" --display 10
 ```
 
-에이전트는 `items` 배열의 `title`과 `description`을 보고 읽을 기사를 선택합니다.
+에이전트는 `items` 배열의 `title`, `description`, `url`, `naver_url`을 보고 읽을 기사를 선택합니다.
 
-### 패턴 B — 기사 전문 요약
+### 패턴 B — 뉴스 브리핑 → Notion 저장
 
 ```bash
-# 검색과 동시에 전문 수집 (EXA_API_KEY 필요)
-./naver-news search --query "인공지능" --display 3 --fetch
-
-# 또는 선택한 URL만 개별 수집
-./naver-news fetch --url "https://..."
+./naver-news search --query "인공지능" --display 5 \
+  | ./naver-news notion --parent-id <ID> --title "뉴스 브리핑"
 ```
 
-에이전트는 `content` 필드를 읽고 직접 요약합니다.
-
-### 패턴 C — 뉴스 브리핑 → Notion 저장
+더 정제된 브리핑이 필요하면 에이전트가 검색 결과를 읽고 직접 요약 Markdown을 작성해 notion에 넘깁니다.
 
 ```bash
-# 여러 주제 검색 후 하나의 Notion 페이지로 정리
-{
-  ./naver-news search --query "인공지능" --display 3 --fetch
-  ./naver-news search --query "경제 주식" --display 3 --fetch
-} | ./naver-news notion --parent-id <ID> --title "2026년 6월 1일 브리핑"
-```
-
-에이전트가 직접 요약 Markdown을 작성해 notion에 넘기는 것도 가능:
-
-```bash
-echo "# 🤖 인공지능\n\n## [기사 제목](https://url)\n\n요약 내용\n\n---" \
+echo "# 인공지능\n\n## [기사 제목](https://url)\n\n검색 결과 설명을 바탕으로 정리한 내용\n\n---" \
   | ./naver-news notion --parent-id <ID> --title "브리핑"
 ```
 
-### 패턴 D — 페이지네이션
+### 패턴 C — 페이지네이션
 
 ```bash
 ./naver-news search --query "AI" --display 10 --start 1   # 1~10번째

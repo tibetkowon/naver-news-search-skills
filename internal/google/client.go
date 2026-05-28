@@ -16,7 +16,6 @@ type NewsItem struct {
 	URL         string `json:"url"`
 	NaverURL    string `json:"naver_url"` // always empty for Google source
 	PubDate     string `json:"pub_date"`
-	Content     string `json:"content,omitempty"`
 }
 
 // rssItem is the internal XML structure for a Google News RSS <item>.
@@ -32,7 +31,7 @@ type rssItem struct {
 	Description string `xml:"description"`
 	// Link in RSS 2.0 is a text node; captured via chardata on a wrapper type.
 	// Fallback: source url attribute if link is empty.
-	Link   rssLink  `xml:"link"`
+	Link   rssLink   `xml:"link"`
 	Source rssSource `xml:"source"`
 }
 
