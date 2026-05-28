@@ -11,8 +11,18 @@ import (
 	"strconv"
 )
 
-// NewsItem represents a single news article from the Naver News API.
+// NewsItem represents a single news article returned by Search.
 type NewsItem struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	URL         string `json:"url"`
+	NaverURL    string `json:"naver_url"`
+	PubDate     string `json:"pub_date"`
+	Content     string `json:"content,omitempty"`
+}
+
+// apiItem matches the raw Naver API response field names.
+type apiItem struct {
 	Title        string `json:"title"`
 	OriginalLink string `json:"originallink"`
 	Link         string `json:"link"`
@@ -21,7 +31,7 @@ type NewsItem struct {
 }
 
 type searchResponse struct {
-	Items []NewsItem `json:"items"`
+	Items []apiItem `json:"items"`
 }
 
 var boldTagRe = regexp.MustCompile(`</?b>`)
@@ -31,8 +41,8 @@ func stripBoldTags(s string) string {
 }
 
 // Search queries the Naver News Search API and returns a list of news items.
-// It reads NAVER_CLIENT_ID and NAVER_CLIENT_SECRET from environment variables.
-func Search(query string, display int, sort string) ([]NewsItem, error) {
+// start is 1-based (Naver API default). Reads NAVER_CLIENT_ID and NAVER_CLIENT_SECRET from env.
+func Search(query string, display int, sort string, start int) ([]NewsItem, error) {
 	clientID := os.Getenv("NAVER_CLIENT_ID")
 	clientSecret := os.Getenv("NAVER_CLIENT_SECRET")
 	if clientID == "" || clientSecret == "" {
@@ -43,6 +53,7 @@ func Search(query string, display int, sort string) ([]NewsItem, error) {
 	params.Set("query", query)
 	params.Set("display", strconv.Itoa(display))
 	params.Set("sort", sort)
+	params.Set("start", strconv.Itoa(start))
 
 	reqURL := "https://openapi.naver.com/v1/search/news.json?" + params.Encode()
 
@@ -68,10 +79,15 @@ func Search(query string, display int, sort string) ([]NewsItem, error) {
 		return nil, fmt.Errorf("decoding response: %w", err)
 	}
 
-	for i := range result.Items {
-		result.Items[i].Title = html.UnescapeString(stripBoldTags(result.Items[i].Title))
-		result.Items[i].Description = html.UnescapeString(stripBoldTags(result.Items[i].Description))
+	items := make([]NewsItem, len(result.Items))
+	for i, a := range result.Items {
+		items[i] = NewsItem{
+			Title:       html.UnescapeString(stripBoldTags(a.Title)),
+			Description: html.UnescapeString(stripBoldTags(a.Description)),
+			URL:         a.OriginalLink,
+			NaverURL:    a.Link,
+			PubDate:     a.PubDate,
+		}
 	}
-
-	return result.Items, nil
+	return items, nil
 }

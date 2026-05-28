@@ -394,3 +394,93 @@ func CreatePage(parentPageID, title string, blocks []Block) (string, error) {
 
 	return pageResp.URL, nil
 }
+
+// AppendBlocks appends blocks to an existing Notion page in batches of 100.
+// Returns the page URL derived from the page ID.
+// Reads NOTION_API_KEY from the environment.
+func AppendBlocks(pageID string, blocks []Block) (string, error) {
+	apiKey := os.Getenv("NOTION_API_KEY")
+	if apiKey == "" {
+		return "", fmt.Errorf("NOTION_API_KEY environment variable is required")
+	}
+
+	const batchSize = 100
+	patchURL := notionAPIBase + "/blocks/" + pageID + "/children"
+	for i := 0; i < len(blocks); i += batchSize {
+		end := i + batchSize
+		if end > len(blocks) {
+			end = len(blocks)
+		}
+		batch := appendBlocksRequest{Children: blocks[i:end]}
+		if _, err := notionRequest(apiKey, http.MethodPatch, patchURL, batch); err != nil {
+			return "", fmt.Errorf("appending blocks (batch starting at %d): %w", i, err)
+		}
+	}
+
+	pageURL := "https://notion.so/" + strings.ReplaceAll(pageID, "-", "")
+	return pageURL, nil
+}
+
+// searchJSON is the expected shape of the search command's JSON output.
+type searchJSON struct {
+	Query  string           `json:"query"`
+	Source string           `json:"source"`
+	Items  []searchJSONItem `json:"items"`
+}
+
+type searchJSONItem struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	URL         string `json:"url"`
+	Content     string `json:"content"`
+}
+
+// ParseSearchJSONToBlocks converts the JSON output of the search command into
+// Notion blocks: a heading_1 for the query, then heading_2 + paragraph + divider
+// per article.
+func ParseSearchJSONToBlocks(data []byte) ([]Block, error) {
+	var s searchJSON
+	if err := json.Unmarshal(data, &s); err != nil {
+		return nil, fmt.Errorf("parsing search JSON: %w", err)
+	}
+
+	var blocks []Block
+
+	// heading_1: query with category emoji
+	label := categoryEmoji(s.Query) + " " + s.Query
+	if s.Source != "" && s.Source != "naver" {
+		label += " (" + s.Source + ")"
+	}
+	h1 := newBlock("heading_1")
+	h1.Heading1 = &TextBlock{RichText: plainRichText(label)}
+	blocks = append(blocks, h1)
+
+	for _, item := range s.Items {
+		// heading_2: title linked to URL
+		h2 := newBlock("heading_2")
+		if item.URL != "" {
+			h2.Heading2 = &TextBlock{RichText: linkedRichText(item.Title, item.URL)}
+		} else {
+			h2.Heading2 = &TextBlock{RichText: plainRichText(item.Title)}
+		}
+		blocks = append(blocks, h2)
+
+		// paragraph: content if available, otherwise description
+		body := item.Content
+		if body == "" {
+			body = item.Description
+		}
+		if body != "" {
+			p := newBlock("paragraph")
+			p.Paragraph = &TextBlock{RichText: parseRichText(body)}
+			blocks = append(blocks, p)
+		}
+
+		// divider
+		div := newBlock("divider")
+		div.Divider = &struct{}{}
+		blocks = append(blocks, div)
+	}
+
+	return blocks, nil
+}
