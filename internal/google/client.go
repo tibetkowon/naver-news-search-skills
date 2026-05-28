@@ -6,6 +6,8 @@ import (
 	"html"
 	"net/http"
 	"net/url"
+	"regexp"
+	"strings"
 )
 
 // NewsItem represents a single news article from Google News RSS.
@@ -47,6 +49,14 @@ type rssFeed struct {
 	Channel rssChannel `xml:"channel"`
 }
 
+var htmlTagRe = regexp.MustCompile(`<[^>]+>`)
+
+func cleanText(s string) string {
+	s = html.UnescapeString(s)
+	s = htmlTagRe.ReplaceAllString(s, "")
+	return strings.TrimSpace(s)
+}
+
 // Search queries Google News RSS for Korean news and returns up to display items.
 // No API key required.
 func Search(query string, display int) ([]NewsItem, error) {
@@ -86,8 +96,8 @@ func Search(query string, display int) ([]NewsItem, error) {
 			link = r.Source.URL
 		}
 		items[i] = NewsItem{
-			Title:       html.UnescapeString(r.Title),
-			Description: html.UnescapeString(r.Description),
+			Title:       cleanText(r.Title),
+			Description: cleanText(r.Description),
 			URL:         link,
 			PubDate:     r.PubDate,
 		}
