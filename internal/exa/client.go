@@ -8,22 +8,20 @@ import (
 	"os"
 )
 
-type highlightsOption struct {
-	MaxCharacters int    `json:"maxCharacters,omitempty"`
-	Query         string `json:"query,omitempty"`
+// ContentResult holds the fetched content for a single URL.
+type ContentResult struct {
+	URL     string `json:"url"`
+	Content string `json:"content"`
 }
 
 type contentsRequest struct {
-	IDs        []string          `json:"ids"`
-	Text       bool              `json:"text,omitempty"`
-	Highlights *highlightsOption `json:"highlights,omitempty"`
+	IDs  []string `json:"ids"`
+	Text bool     `json:"text,omitempty"`
 }
 
 type contentsResult struct {
-	ID              string    `json:"id"`
-	Text            string    `json:"text"`
-	Highlights      []string  `json:"highlights"`
-	HighlightScores []float64 `json:"highlightScores"`
+	ID   string `json:"id"`
+	Text string `json:"text"`
 }
 
 type contentsResponse struct {
@@ -65,36 +63,28 @@ func exaPost(body contentsRequest) (*contentsResponse, error) {
 	return &result, nil
 }
 
-// FetchContent retrieves the text content of a URL using the Exa Contents API.
-// It reads EXA_API_KEY from environment variables.
-func FetchContent(pageURL string) (string, error) {
-	result, err := exaPost(contentsRequest{IDs: []string{pageURL}, Text: true})
-	if err != nil {
-		return "", err
-	}
-	if len(result.Results) == 0 {
-		return "", fmt.Errorf("no content returned for URL: %s", pageURL)
-	}
-	return result.Results[0].Text, nil
-}
-
-// FetchHighlights retrieves key highlight snippets from the given URL.
-// query guides which sentences to extract (empty string = general relevance).
-// maxChars limits total characters per URL (0 uses default 500).
-func FetchHighlights(pageURL, query string, maxChars int) ([]string, error) {
-	if maxChars == 0 {
-		maxChars = 500
-	}
-	opts := &highlightsOption{MaxCharacters: maxChars}
-	if query != "" {
-		opts.Query = query
-	}
-	result, err := exaPost(contentsRequest{IDs: []string{pageURL}, Highlights: opts})
+// FetchContents retrieves text content for multiple URLs in a single Exa API call.
+// Reads EXA_API_KEY from environment variables.
+func FetchContents(urls []string) ([]ContentResult, error) {
+	result, err := exaPost(contentsRequest{IDs: urls, Text: true})
 	if err != nil {
 		return nil, err
 	}
-	if len(result.Results) == 0 {
-		return nil, fmt.Errorf("no highlights returned for URL: %s", pageURL)
+	out := make([]ContentResult, len(result.Results))
+	for i, r := range result.Results {
+		out[i] = ContentResult{URL: r.ID, Content: r.Text}
 	}
-	return result.Results[0].Highlights, nil
+	return out, nil
+}
+
+// FetchContent retrieves the text content of a single URL using the Exa Contents API.
+func FetchContent(pageURL string) (string, error) {
+	results, err := FetchContents([]string{pageURL})
+	if err != nil {
+		return "", err
+	}
+	if len(results) == 0 {
+		return "", fmt.Errorf("no content returned for URL: %s", pageURL)
+	}
+	return results[0].Content, nil
 }
