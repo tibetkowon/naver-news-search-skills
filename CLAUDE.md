@@ -4,12 +4,12 @@
 
 ## 프로젝트 개요
 
-에이전트는 이 프로젝트의 `naver-news` CLI를 호출하여 뉴스 검색 결과와 링크를 가져옵니다. 기사 본문 추출은 봇 차단과 언론사별 HTML 차이를 피하기 위해 CLI 범위 밖으로 둡니다.
+에이전트는 이 프로젝트의 `naver-news` CLI를 호출하여 뉴스 검색 결과와 링크를 가져오고, 여러 검색어 브리핑을 Slack/Discord/Webhook/Notion에 발행합니다. 기사 본문 추출은 봇 차단과 언론사별 HTML 차이를 피하기 위해 CLI 범위 밖으로 둡니다.
 
 ## 기술 스택
 
 - **언어**: Go (표준 라이브러리만 사용: `net/http`, `encoding/json`, `encoding/xml`, `flag`, `regexp`)
-- **외부 API**: 네이버 뉴스 검색 API, Google News RSS, Notion API
+- **외부 API**: 네이버 뉴스 검색 API, Google News RSS, Notion API, Slack/Discord/Generic Webhook
 
 ## 디렉토리 구조
 
@@ -26,8 +26,12 @@ naver-news-search-skills/
 │   │   └── client.go       ← 네이버 뉴스 API 클라이언트
 │   ├── google/
 │   │   └── client.go       ← Google News RSS 클라이언트
-│   └── notion/
-│       └── client.go       ← Notion API 클라이언트 + 파서
+│   ├── briefing/
+│   │   └── briefing.go     ← 멀티 검색어 브리핑/중복 제거/렌더링
+│   ├── notion/
+│   │   └── client.go       ← Notion API 클라이언트 + 파서
+│   └── webhook/
+│       └── client.go       ← Slack/Discord/Generic Webhook 발행
 ├── .claude/
 │   └── skills/             ← 로컬 Claude 스킬
 └── docs/
@@ -41,6 +45,9 @@ naver-news-search-skills/
 | `NAVER_CLIENT_ID` | 네이버 개발자 센터 클라이언트 ID | `--source naver` 필수 |
 | `NAVER_CLIENT_SECRET` | 네이버 개발자 센터 클라이언트 Secret | `--source naver` 필수 |
 | `NOTION_API_KEY` | Notion Integration 토큰 | `notion` 커맨드 필수 |
+| `SLACK_WEBHOOK_URL` | Slack Incoming Webhook URL | `publish/run --target slack` |
+| `DISCORD_WEBHOOK_URL` | Discord Webhook URL | `publish/run --target discord` |
+| `WEBHOOK_URL` | 범용 JSON Webhook URL | `publish/run --target webhook` |
 
 ## 빌드 및 실행
 
@@ -56,6 +63,16 @@ NAVER_CLIENT_ID=xxx NAVER_CLIENT_SECRET=yyy ./naver-news search --query "AI" --d
 
 # Google News RSS (API 키 불필요)
 ./naver-news search --query "인공지능" --display 5 --source google
+
+# 여러 검색어 브리핑
+./naver-news brief --queries "AI,반도체,환율" --display 5 --source auto
+
+# Slack 채널 발행
+./naver-news brief --queries "AI,반도체" \
+  | SLACK_WEBHOOK_URL=xxx ./naver-news publish --target slack
+
+# 수집부터 발행까지 1회 실행
+./naver-news run --queries "경제,환율" --target notion --page-id <page_id>
 
 # 페이지네이션
 NAVER_CLIENT_ID=xxx NAVER_CLIENT_SECRET=yyy ./naver-news search --query "AI" --display 10 --start 11
@@ -83,6 +100,12 @@ NAVER_CLIENT_ID=xxx NAVER_CLIENT_SECRET=yyy ./naver-news search --query "인공�
 | `--source` | naver | `naver` \| `google` |
 | `--format` | json | `json` \| `markdown` |
 
+### `brief`
+여러 검색어를 병렬 수집하고 URL 기준 중복을 줄인 브리핑 JSON/Markdown을 출력합니다. `--source auto`는 Naver 실패 시 Google News RSS로 폴백합니다.
+
+### `publish`
+stdin(JSON 또는 Markdown)을 Slack, Discord, Generic Webhook, Notion으로 발행합니다. Slack/Discord 채널은 Webhook URL에 연결된 채널로 결정됩니다.
+
 ### `notion`
 stdin(JSON 또는 Markdown)을 Notion 페이지로 저장합니다.
 
@@ -90,6 +113,9 @@ stdin(JSON 또는 Markdown)을 Notion 페이지로 저장합니다.
 |--------|------|
 | `--parent-id` + `--title` | 새 페이지 생성 |
 | `--page-id` | 기존 페이지에 블록 append |
+
+### `run`
+`brief`와 `publish`를 한 번에 수행합니다. cron/에이전트 스케줄러에서는 `--interval` 없이 1회 실행으로 호출하고, 장기 실행이 필요할 때만 `--interval 30m`처럼 지정합니다.
 
 ## 워크플로우 스킬
 
